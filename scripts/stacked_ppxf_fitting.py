@@ -1,8 +1,3 @@
-
-# Stellar population fit by ppxf
-
-## Import relevant modules
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -17,8 +12,8 @@ import ppxf.ppxf_util as util
 import ppxf.sps_util as lib
 
 # Other dependencies
-from der_snr import DER_SNR
-from ned_calculator import NedCalculator
+from .der_snr import DER_SNR
+from .ned_calculator import NedCalculator
 
 
 
@@ -558,7 +553,6 @@ def combine_catalogues():
     print(f"Combined {len(all_dfs)} catalogues into 'Combined_DoR_Catalogues.xlsx'")
 
 
-
 def fit_spectra():
     # make output directories if they don't exist
     directories = ['outputs/ppxf_fits', 'outputs/sfh_plots', 'outputs/stacked_catalogues']
@@ -566,25 +560,44 @@ def fit_spectra():
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-    clustering_methods = {
-        'DoR': ['DoR_0', 'DoR_1', 'DoR_2'],
-        'KMeans': ['KMeans_0', 'KMeans_1', 'KMeans_2'],
-        'GMM': ['GMM_0', 'GMM_1', 'GMM_2'],
-        'Hierarchical': ['Hierarchical_0', 'Hierarchical_1', 'Hierarchical_2']
-    }
+    # Get all stacked FITS files and organize them by method
+    stacked_dir = "data/stacked_fits"
+    fits_files = [f for f in os.listdir(stacked_dir) if f.startswith("stacked_") and f.endswith(".fits")]
 
+    # Group files by clustering method
+    clustering_methods = {}
+    for fits_file in fits_files:
+        # Remove 'stacked_' prefix and '.fits' suffix
+        base_name = fits_file[8:-5]  # e.g., "DoR_0" from "stacked_DoR_0.fits"
+
+        # Extract method name (everything before the last underscore)
+        method = base_name.rsplit('_', 1)[0]  # e.g., "DoR" from "DoR_0"
+
+        # Initialize list for method if not exists
+        if method not in clustering_methods:
+            clustering_methods[method] = []
+
+        # Add full base name to method's list
+        clustering_methods[method].append(base_name)
+
+    # Sort the lists within each method to ensure consistent ordering
+    for method in clustering_methods:
+        clustering_methods[method].sort()
+
+    # Process each method
     for method in clustering_methods:
         print(f"\n================================")
         print(f"Fitting {method}'s clusters")
         file_names = []
         files_list = clustering_methods[method]
         for file in files_list:
-            file = "data/stacked_fits/stacked_" + file + ".fits"
+            file = os.path.join(stacked_dir, f"stacked_{file}.fits")
             file_names.append(file)
         make_catalogue(file_names, method)
         print(f"\n================================")
 
     combine_catalogues()
+
 
 if __name__ == '__main__':
     fit_spectra()
