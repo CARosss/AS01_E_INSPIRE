@@ -218,7 +218,8 @@ if __name__ == '__main__':
     files = [
         "data/cluster_results/k-means_clusters.csv",
         "data/cluster_results/gmm_clusters.csv",
-        "data/cluster_results/hierarchical_clusters.csv"
+        "data/cluster_results/hierarchical_clusters.csv",
+        "data/cluster_results/dor_clusters.csv"
     ]
 
     # Load cluster results
@@ -226,19 +227,15 @@ if __name__ == '__main__':
     cluster_results = {
         'Hierarchical': pd.read_csv(files[2]),
         'KMeans': pd.read_csv(files[0]),
-        'GMM': pd.read_csv(files[1])
+        'GMM': pd.read_csv(files[1]),
+        'DoR': pd.read_csv(files[3]),
     }
 
-    # Create DoR clusters
-    dor_clusters = []
-    for threshold in [(0.6, float('inf')), (0.3, 0.6), (0, 0.3)]:
-        dor_group = catalogue[(catalogue['DoR'] > threshold[0]) & (catalogue['DoR'] <= threshold[1])]
-        file_list = [f"spec-{int(plate):04d}-{int(mjd):05d}-{int(fiber):04d}.fits"
-                     for plate, mjd, fiber in zip(dor_group['plate'], dor_group['mjd'], dor_group['fiberid'])]
-        dor_clusters.append(file_list)
 
     cluster_groups = {
-        'DoR': dor_clusters,
+        'DoR': [
+            cluster_results['DoR'][cluster_results['DoR']["Cluster"] == i]["SDSS_ID"].tolist() for i
+            in range(3)],
         'Hierarchical': [
             cluster_results['Hierarchical'][cluster_results['Hierarchical']["Cluster"] == i]["SDSS_ID"].tolist() for i
             in range(3)],
@@ -248,7 +245,8 @@ if __name__ == '__main__':
                 range(max(cluster_results['GMM']["Cluster"]) + 1)]
     }
 
-    colors = ['red', 'blue', 'green']
+
+    colors = ['red', 'blue', 'green', 'black']
     n = 0.001635
     factor = [n * 4, n * 2.7, n * 2.5]
 

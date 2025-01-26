@@ -207,7 +207,7 @@ def get_values_from_sfh(univ_age, sfh_table, ycol):
 
 
 
-def make_catalogue(file_names, method):
+def make_catalogue(file_names, method, nrand=9):
 
     tie_balmer = True
     limit_doublets = True
@@ -226,7 +226,7 @@ def make_catalogue(file_names, method):
     metals = []
     snrs = []
 
-    nrand = 9
+    #nrand = 9
 
     col_line1 = 'black'  # gdago: here you choose the color of the line
     col_line2 = 'green'  # gdago: here you choose the color of the line
@@ -553,7 +553,7 @@ def combine_catalogues():
     print(f"Combined {len(all_dfs)} catalogues into 'Combined_DoR_Catalogues.xlsx'")
 
 
-def fit_spectra():
+def fit_spectra(nrand):
     # make output directories if they don't exist
     directories = ['outputs/ppxf_fits', 'outputs/sfh_plots', 'outputs/stacked_catalogues']
     for directory in directories:
@@ -593,7 +593,7 @@ def fit_spectra():
         for file in files_list:
             file = os.path.join(stacked_dir, f"stacked_{file}.fits")
             file_names.append(file)
-        make_catalogue(file_names, method)
+        make_catalogue(file_names, method, nrand)
         print(f"\n================================")
 
     combine_catalogues()

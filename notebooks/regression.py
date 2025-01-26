@@ -15,14 +15,10 @@ from sklearn.metrics import (
 
 from sklearn.linear_model import (
     LinearRegression,
-    Ridge,
-    Lasso,
 )
 
-from sklearn.svm import SVR
 from sklearn.ensemble import (
     RandomForestRegressor,
-    GradientBoostingRegressor,
 )
 
 from xgboost import XGBRegressor
@@ -136,40 +132,6 @@ def comprehensive_regression_analysis(
 
     # Define models with their parameter grids
     models = {
-        'Linear Regression': {
-            'model': LinearRegression(),
-            'params': {}  # No hyperparameters to tune
-        },
-
-        'SVR (RBF)': {
-            'model': SVR(kernel='rbf'),
-            'params': {
-                'C': [0.01, 0.1, 0.5, 1],  # Around the best value of 0.1
-                'epsilon': [0.001, 0.01, 0.1],  # Around the best value of 0.01
-                'gamma': ['scale', 'auto']
-            }
-        },
-        'Random Forest': {
-            'model': RandomForestRegressor(random_state=random_state),
-            'params': {
-                'n_estimators': [75, 100, 125, 150],  # Around the best value of 100
-                'max_depth': [10, 15, 20, 25, None],  # Add some specific depths, keep None as an option
-                'min_samples_split': [2, 3, 4, 5],  # Around the best value of 2
-                'max_features': ['sqrt', 'log2'],
-                'max_samples': [0.6, 0.8, 1.0]  # Add bootstrap sample size
-            }
-        },
-        'Gradient Boosting': {
-            'model': GradientBoostingRegressor(random_state=random_state),
-            'params': {
-                'n_estimators': [30, 50, 75, 100],  # Around the best value of 50
-                'learning_rate': [0.05, 0.1, 0.15],  # Narrow around 0.1
-                'max_depth': [3, 4, 5, 6],  # Around the best value of 4
-                'min_samples_split': [5, 10, 15],  # Around the best value of 10
-                'max_features': ['sqrt', 'log2'],
-                'subsample': [0.6, 0.8, 1.0]  # Add subsample parameter
-            }
-        },
         'XGBoost': {
             'model': XGBRegressor(random_state=42),
             'params': {
@@ -178,7 +140,21 @@ def comprehensive_regression_analysis(
                 'learning_rate': [0.01, 0.1],
                 'subsample': [0.8, 1.0]
             }
-        }
+        },
+        'Linear Regression': {
+            'model': LinearRegression(),
+            'params': {}  # No hyperparameters to tune
+        },
+        'Random Forest': {
+            'model': RandomForestRegressor(random_state=random_state),
+            'params': {
+                'n_estimators': [75, 150],  # Around the best value of 100
+                'max_depth': [10, 25, None],  # Add some specific depths, keep None as an option
+                'min_samples_split': [2, 5],  # Around the best value of 2
+                'max_features': ['sqrt', 'log2'],
+                'max_samples': [0.6, 0.8, 1.0]  # Add bootstrap sample size
+            }
+        },
     }
 
     # Results storage
@@ -255,7 +231,7 @@ def comprehensive_regression_analysis(
 
 def main():
     # Load data
-    df = pd.read_csv('data/E-INSPIRE_I_master_catalogue.csv')
+    df = pd.read_csv('../data/E-INSPIRE_I_master_catalogue.csv')
     df = df.sample(frac=1).reset_index(drop=True)
     print("length=====", len(df))
     # Select features

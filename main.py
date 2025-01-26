@@ -33,37 +33,35 @@ def setup_directories():
 def get_cluster_assignments():
     """Load and organize cluster assignments"""
     # Load raw results
-    cluster_files = [
+
+    files = [
         "data/cluster_results/k-means_clusters.csv",
         "data/cluster_results/gmm_clusters.csv",
-        "data/cluster_results/hierarchical_clusters.csv"
+        "data/cluster_results/hierarchical_clusters.csv",
+        "data/cluster_results/dor_clusters.csv"
     ]
 
+    # Load cluster results
+    catalogue = pd.read_csv("data/E-INSPIRE_I_master_catalogue.csv")
     cluster_results = {
-        'KMeans': pd.read_csv(cluster_files[0]),
-        'GMM': pd.read_csv(cluster_files[1]),
-        'Hierarchical': pd.read_csv(cluster_files[2])
+        'Hierarchical': pd.read_csv(files[2]),
+        'KMeans': pd.read_csv(files[0]),
+        'GMM': pd.read_csv(files[1]),
+        'DoR': pd.read_csv(files[3]),
     }
 
-    # Get DoR groups
-    catalogue = pd.read_csv("data/E-INSPIRE_I_master_catalogue.csv")
-    dor_clusters = []
-    for threshold in [(0.6, float('inf')), (0.3, 0.6), (0, 0.3)]:
-        dor_group = catalogue[(catalogue['DoR'] > threshold[0]) & (catalogue['DoR'] <= threshold[1])]
-        file_list = [f"spec-{int(plate):04d}-{int(mjd):05d}-{int(fiber):04d}.fits"
-                     for plate, mjd, fiber in zip(dor_group['plate'], dor_group['mjd'], dor_group['fiberid'])]
-        dor_clusters.append(file_list)
 
-    # Organize all clusters
     cluster_groups = {
-        'DoR': dor_clusters,
+        'DoR': [
+            cluster_results['DoR'][cluster_results['DoR']["Cluster"] == i]["SDSS_ID"].tolist() for i
+            in range(3)],
         'Hierarchical': [
-            cluster_results['Hierarchical'][cluster_results['Hierarchical']["Cluster"] == i]["SDSS_ID"].tolist()
-            for i in range(3)],
-        'KMeans': [cluster_results['KMeans'][cluster_results['KMeans']["Cluster"] == i]["SDSS_ID"].tolist()
-                   for i in range(3)],
-        'GMM': [cluster_results['GMM'][cluster_results['GMM']["Cluster"] == i]["SDSS_ID"].tolist()
-                for i in range(max(cluster_results['GMM']["Cluster"]) + 1)]
+            cluster_results['Hierarchical'][cluster_results['Hierarchical']["Cluster"] == i]["SDSS_ID"].tolist() for i
+            in range(3)],
+        'KMeans': [cluster_results['KMeans'][cluster_results['KMeans']["Cluster"] == i]["SDSS_ID"].tolist() for i in
+                   range(3)],
+        'GMM': [cluster_results['GMM'][cluster_results['GMM']["Cluster"] == i]["SDSS_ID"].tolist() for i in
+                range(max(cluster_results['GMM']["Cluster"]) + 1)]
     }
 
     return cluster_groups
@@ -102,7 +100,7 @@ def main():
 
     # Run analysis
     process_clusters()
-    fit_spectra()
+    fit_spectra(nrand = 1)
 
 
     print("\nAnalysis complete!")
