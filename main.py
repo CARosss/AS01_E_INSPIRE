@@ -90,7 +90,7 @@ def get_cluster_assignments():
             ]
 
             # Verify and potentially reorder clusters
-            groups = verify_cluster_order(groups)
+            groups = verify_cluster_order(groups)  #  ---- this fixes the cluster orders issue - but why?
             cluster_groups[method] = groups
 
         except Exception as e:
