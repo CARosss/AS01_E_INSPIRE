@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import pandas as pd
+import numpy as np
 from scripts.stack_spectra import stack_spectra
 from scripts.stacked_ppxf_fitting import fit_spectra
 
@@ -15,7 +16,7 @@ def setup_directories():
 
     # Clear existing output directories
     for directory in directories:
-        if directory.startswith('outputs/'):  # Only clear output directories, not data
+        if directory.startswith('outputs/'):
             if os.path.exists(directory):
                 for file in os.listdir(directory):
                     file_path = os.path.join(directory, file)
@@ -30,39 +31,71 @@ def setup_directories():
         os.makedirs(directory, exist_ok=True)
 
 
+def verify_cluster_order(spectra_list, catalogue_path='data/E-INSPIRE_I_master_catalogue.csv'):
+    """Verify cluster ordering by calculating mean DoR for each cluster"""
+    catalogue = pd.read_csv(catalogue_path)
+
+    cluster_stats = []
+    for cluster_spectra in spectra_list:
+        # Extract plate, mjd, fiber from filenames
+        cluster_data = []
+        for filename in cluster_spectra:
+            parts = filename.replace('spec-', '').replace('.fits', '').split('-')
+            plate, mjd, fiber = map(int, parts)
+
+            # Find matching row in catalogue
+            mask = (catalogue['plate'] == plate) & \
+                   (catalogue['mjd'] == mjd) & \
+                   (catalogue['fiberid'] == fiber)
+
+            if any(mask):
+                cluster_data.append(catalogue.loc[mask, 'DoR'].iloc[0])
+
+        mean_dor = np.mean(cluster_data) if cluster_data else 0
+        cluster_stats.append(mean_dor)
+
+    # Check if clusters are in descending DoR order
+    current_order = np.array(cluster_stats)
+    expected_order = np.sort(current_order)[::-1]  # Sort in descending order
+
+    if not np.array_equal(current_order, expected_order):
+        # Reorder clusters to match descending DoR
+        sort_indices = np.argsort(current_order)[::-1]
+        return [spectra_list[i] for i in sort_indices]
+
+    return spectra_list
+
+
 def get_cluster_assignments():
-    """Load and organize cluster assignments"""
-    # Load raw results
+    """Load and organize cluster assignments from all *_clusters.csv files"""
+    cluster_dir = "data/cluster_results"
+    cluster_groups = {}
 
-    files = [
-        "data/cluster_results/k-means_clusters.csv",
-        "data/cluster_results/gmm_clusters.csv",
-        "data/cluster_results/hierarchical_clusters.csv",
-        "data/cluster_results/dor_clusters.csv"
-    ]
+    # Get all cluster files
+    cluster_files = [f for f in os.listdir(cluster_dir) if f.endswith('_clusters.csv')]
 
-    # Load cluster results
-    catalogue = pd.read_csv("data/E-INSPIRE_I_master_catalogue.csv")
-    cluster_results = {
-        'Hierarchical': pd.read_csv(files[2]),
-        'KMeans': pd.read_csv(files[0]),
-        'GMM': pd.read_csv(files[1]),
-        'DoR': pd.read_csv(files[3]),
-    }
+    # Process each file
+    for file in cluster_files:
+        # Extract method name from filename (remove _clusters.csv)
+        method = file.replace('_clusters.csv', '').upper()
 
+        try:
+            # Load the cluster results
+            df = pd.read_csv(os.path.join(cluster_dir, file))
 
-    cluster_groups = {
-        'DoR': [
-            cluster_results['DoR'][cluster_results['DoR']["Cluster"] == i]["SDSS_ID"].tolist() for i
-            in range(3)],
-        'Hierarchical': [
-            cluster_results['Hierarchical'][cluster_results['Hierarchical']["Cluster"] == i]["SDSS_ID"].tolist() for i
-            in range(3)],
-        'KMeans': [cluster_results['KMeans'][cluster_results['KMeans']["Cluster"] == i]["SDSS_ID"].tolist() for i in
-                   range(3)],
-        'GMM': [cluster_results['GMM'][cluster_results['GMM']["Cluster"] == i]["SDSS_ID"].tolist() for i in
-                range(max(cluster_results['GMM']["Cluster"]) + 1)]
-    }
+            # Create groups for clusters 0, 1, and 2
+            groups = [
+                df[df["Cluster"] == i]["SDSS_ID"].tolist()
+                for i in range(3)  # We know each file has exactly 3 clusters
+            ]
+
+            # Verify and potentially reorder clusters
+            groups = verify_cluster_order(groups)
+            cluster_groups[method] = groups
+
+        except Exception as e:
+            print(f"Error processing {file}: {e}")
+            continue
 
     return cluster_groups
 
@@ -70,24 +103,21 @@ def get_cluster_assignments():
 def process_clusters():
     cluster_groups = get_cluster_assignments()
 
-    # Define parameters for each group
+    # Define parameters for visualization (fixed for 3 clusters)
     n = 0.001635
-    factors = [n * 4, n * 2.7, n * 2.5]  # extend if needed
-    colors = ['red', 'blue', 'green']  # extend if needed
+    factors = [n * 4, n * 2.7, n * 2.5]
+    colors = ['red', 'blue', 'green']
 
     # Process each clustering method
     for method, groups in cluster_groups.items():
         print(f"\n================================")
         print(f"Processing {method} clusters")
 
-        # Create labels and get appropriate number of factors/colors
-        method_labels = [f"{method}_{i}" for i in range(len(groups))]
-        method_colors = colors[:len(groups)]
-        method_factors = factors[:len(groups)]
+        # Create labels
+        method_labels = [f"{method}_{i}" for i in range(3)]
 
         # Stack spectra for each cluster
-        for spectra, color, label, factor in zip(groups, method_colors,
-                                                 method_labels, method_factors):
+        for spectra, color, label, factor in zip(groups, colors, method_labels, factors):
             print(f"\nStacking {label}")
             stack_spectra(spectra, factor, label)
 
@@ -100,8 +130,7 @@ def main():
 
     # Run analysis
     process_clusters()
-    fit_spectra(nrand = 1)
-
+    fit_spectra(nrand=9)
 
     print("\nAnalysis complete!")
     print("Check outputs/stacked_catalogues for results.")
