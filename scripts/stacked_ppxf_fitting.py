@@ -11,16 +11,15 @@ from ppxf.ppxf import ppxf
 import ppxf.ppxf_util as util
 import ppxf.sps_util as lib
 
+
 # Other dependencies
 from .der_snr import DER_SNR
 from .ned_calculator import NedCalculator
 
-
-
 ## Create necessary functions
 
 def bootstrap_residuals(model, resid, wild=True):
-    """
+    '''
     https://en.wikipedia.org/wiki/Bootstrapping_(statistics)#Resampling_residuals
     https://en.wikipedia.org/wiki/Bootstrapping_(statistics)#Wild_bootstrap
 
@@ -34,7 +33,7 @@ def bootstrap_residuals(model, resid, wild=True):
     :param wild: use wild bootstrap to allow for variable errors
     :return: new model with bootstrapped residuals
 
-    """
+    '''
     if wild:  # Wild Bootstrapping: generates -resid or resid with prob=1/2
         eps = resid * (2 * np.random.randint(2, size=resid.size) - 1)
     else:  # Standard Bootstrapping: random selection with repetition
