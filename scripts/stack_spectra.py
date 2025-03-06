@@ -136,7 +136,7 @@ def combine_spectra(aligned_spectra):
     return wavelength, combined_flux, combined_ivar
 
 
-def save_fits(wavelength, flux, combined_ivar, cluster_name, mgfe, sigma_fin):
+def save_fits(wavelength, flux, combined_ivar, cluster_name, mgfe, sigma_fin, vdisp_avg, vdisp_std):
     coadd_data = np.zeros(len(wavelength), dtype=[
         ('flux', 'f8'), ('wave', 'f8'),
         ('ivar', 'f8'), ('wdisp', 'f8')
@@ -153,7 +153,10 @@ def save_fits(wavelength, flux, combined_ivar, cluster_name, mgfe, sigma_fin):
     primary_hdu.header['HIERARCH NAME'] = f'stacked_{cluster_name}'
     primary_hdu.header['HIERARCH z'] = 0
     primary_hdu.header['HIERARCH ALPHA'] = mgfe
-    primary_hdu.header['HIERARCH SIGMA'] = sigma_fin
+    primary_hdu.header['HIERARCH SIGMA_MAX'] = sigma_fin
+    primary_hdu.header['HIERARCH SIGMA'] = vdisp_avg
+    primary_hdu.header['HIERARCH SIGMA_ERR'] = vdisp_std
+
 
     hdul = fits.HDUList([primary_hdu, coadd_hdu])
     output_file = f'data/stacked_fits/stacked_{cluster_name}.fits'
@@ -171,7 +174,8 @@ def stack_spectra(spectra, factor, cluster_name):
     ages = []
     metallicity = []
     DoRs = []
-
+    masses = []
+    mass_errs = []
     for filename in spectra:
         wave, flux, ivar = load_spectrum("data/fits_shortlist/" + filename)
         plate, mjd, fiber = map(int, re.match(r'spec-(\d{4})-(\d{5})-(\d{4})\.fits', filename).groups())
@@ -189,18 +193,24 @@ def stack_spectra(spectra, factor, cluster_name):
         metallicity.append(matching_row['[M/H]_mean_mass'].iloc[0])
         DoRs.append(float(matching_row['DoR'].iloc[0]))
 
+        masses.append(10**matching_row['logM*'].iloc[0])
+        mass_errs.append(10**matching_row['errlogM*'].iloc[0])
+
+
     # Print statistics
     print(f"STATS: ({len(spectra)} items)")
     print("--> Max vdisp:", max(vdisps))
+    print("--> Avg vdisp:", np.mean(vdisps))
     print("--> mgfe avg:", np.mean(mgfe))
     print("--> age avg:", np.mean(ages))
     print("--> metallicity avg:", np.mean(metallicity))
     print("--> DoR avg:", np.mean(DoRs))
-    print("s.dev's:")
+    """print("s.dev's:")
     print("--> mgfe std:", np.std(mgfe))
     print("--> age std:", np.std(ages))
     print("--> metallicity std:", np.std(metallicity))
     print("--> DoR std:", np.std(DoRs))
+    """
 
     # Process spectra
     smoothed_data, sigma_ds, sigma_fin = smooth_spectra(data, vdisps)
@@ -209,4 +219,6 @@ def stack_spectra(spectra, factor, cluster_name):
 
     # Save results
     mgfe_avg = round(np.mean(mgfe), 1)
-    save_fits(wavelength, flux, combined_ivar, cluster_name, mgfe_avg, sigma_fin)
+    vdisp_avg = round(np.mean(vdisps), 1)
+    vdisp_std = round(np.std(vdisps), 1)
+    save_fits(wavelength, flux, combined_ivar, cluster_name, mgfe_avg, sigma_fin, vdisp_avg, vdisp_std)

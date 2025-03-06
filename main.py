@@ -78,7 +78,7 @@ def get_cluster_assignments():
     for file in cluster_files:
         # Extract method name from filename (remove _clusters.csv)
         method = file.replace('_clusters.csv', '').upper()
-
+        print(method)
         try:
             # Load the cluster results
             df = pd.read_csv(os.path.join(cluster_dir, file))

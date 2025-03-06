@@ -11,12 +11,8 @@ from ppxf.ppxf import ppxf
 import ppxf.ppxf_util as util
 import ppxf.sps_util as lib
 
-
-# Other dependencies
 from .der_snr import DER_SNR
 from .ned_calculator import NedCalculator
-
-## Create necessary functions
 
 def bootstrap_residuals(model, resid, wild=True):
     '''
@@ -40,8 +36,6 @@ def bootstrap_residuals(model, resid, wild=True):
         eps = np.random.choice(resid, size=resid.size)
 
     return model + eps
-
-
 
 def read_fits_summary(fitsfile):
     hdu = fits.open(fitsfile)
@@ -75,8 +69,6 @@ def read_fits_summary(fitsfile):
 
     return name, z, agesplot, weiplot, univ_age
 
-
-
 def plot_sfh(ax, fitsfile, col_line, legend_on=False):
     name, z, agesplot, weiplot, univ_age = read_fits_summary(fitsfile)
 
@@ -107,8 +99,6 @@ def plot_sfh(ax, fitsfile, col_line, legend_on=False):
 
     return agesplot, weiplot
 
-
-
 def line2p(p1, p2, x):
     x1, y1 = p1
     x2, y2 = p2
@@ -118,13 +108,11 @@ def line2p(p1, p2, x):
 
     return m * x + q
 
-
 def line2p_rev(p1, p2, y):
     x1, y1 = p1
     x2, y2 = p2
 
     return (y - y1) / (y2 - y1) * (x2 - x1) + x1 if y2 != y1 else x2
-
 
 def get_values_from_sfh(univ_age, sfh_table, ycol):
     '''
@@ -204,10 +192,7 @@ def get_values_from_sfh(univ_age, sfh_table, ycol):
 
     return y_z2, x_075, x_090, x_100, dor_90, dor_100
 
-
-
 def make_catalogue(file_names, method, nrand=9):
-
     tie_balmer = True
     limit_doublets = True
 
@@ -225,7 +210,7 @@ def make_catalogue(file_names, method, nrand=9):
     metals = []
     snrs = []
 
-    #nrand = 9
+    # nrand = 9
 
     col_line1 = 'black'  # gdago: here you choose the color of the line
     col_line2 = 'green'  # gdago: here you choose the color of the line
@@ -250,6 +235,37 @@ def make_catalogue(file_names, method, nrand=9):
     times_100r = []
     dors_100r = []
 
+    # New lists for alpha+0.1 results
+    logAges_plus = []
+    metals_plus = []
+    snrs_plus = []
+    # New
+    mass_fracs_plus = []
+    times_75_plus = []
+    times_90_plus = []
+    times_100_plus = []
+    dors_100_plus = []
+
+    # New lists for alpha-0.1 results
+    logAges_minus = []
+    metals_minus = []
+    snrs_minus = []
+    # New
+    mass_fracs_minus = []
+    times_75_minus = []
+    times_90_minus = []
+    times_100_minus = []
+    dors_100_minus = []
+
+    # Alpha flags to track boundary cases
+    alpha_flags = []
+
+    sigmas = []
+    names = []
+    alphas = []
+    sigma_maxs = []
+    sigma_errs=[]
+
     for i, filename in enumerate(file_names):
         print("Doing:", filename)
         hdu = fits.open(filename, ignore_missing_simple=True)
@@ -263,13 +279,23 @@ def make_catalogue(file_names, method, nrand=9):
 
         sigma = hdu[0].header['SIGMA']  # or hdu[0].header['HIERARCH SIGMA']
         alpha = hdu[0].header['ALPHA']  # or hdu[0].header['HIERARCH ALPHA']
+        sigma_max = hdu[0].header['SIGMA_MAX']
+        sigma_err = hdu[0].header['SIGMA_ERR']
 
-        #sigma = t['sigma'][0]
-        #alpha = t['ALPHA'][0]
+        # sigma = t['sigma'][0]
+        # alpha = t['ALPHA'][0]
         # array of the average alpha (repeated many times for formatting sake)
         # SWAP OUT FOR WHATEVER JOHN CALCULATES!!!
 
         redshift = 0
+
+        # Set alpha flag (-1 for at lower bound, 1 for at upper bound, 0 for neither)
+        alpha_flag = 0
+        if alpha <= 0:
+            alpha_flag = -1
+        elif alpha >= 0.4:
+            alpha_flag = 1
+        alpha_flags.append(alpha_flag)
 
         if alpha < 0:
             alpha = '0'
@@ -288,7 +314,7 @@ def make_catalogue(file_names, method, nrand=9):
         print(snrs)
         wave *= np.median(util.vac_to_air(wave) / wave)
 
-        noise = np.full_like(galaxy, 0.0163)  # Assume constant noise per pixel here
+        noise = np.full_like(galaxy, 0.02)  # Assume constant noise per pixel here
 
         d_ln_lam = np.log(wave[-1] / wave[0]) / (wave.size - 1)  # Average ln_lam step
         velscale = c * d_ln_lam  # eq. (8) of Cappellari (2017)
@@ -324,15 +350,17 @@ def make_catalogue(file_names, method, nrand=9):
 
         # First run is just to compute a good estimate of the noise (it isn't used in the final fit)
         pp = ppxf(templates, galaxy, noise, velscale, start, moments=moments,
-                  degree=-1,mdegree=8, lam=wave, lam_temp=sps.lam_temp,
+                  degree=-1, mdegree=8, lam=wave, lam_temp=sps.lam_temp,
                   regul=1 / regul_err, reg_dim=reg_dim, component=component,
                   gas_component=gas_component, gas_names=gas_names,
                   gas_reddening=gas_reddening, quiet=True)
 
         noise = noise * np.sqrt(pp.chi2)
 
+        print("chi2 = ", pp.chi2)
+
         pp = ppxf(templates, galaxy, noise, velscale, start, moments=moments,
-                  degree=-1,mdegree=8, lam=wave, lam_temp=sps.lam_temp,
+                  degree=-1, mdegree=8, lam=wave, lam_temp=sps.lam_temp,
                   regul=1 / regul_err, reg_dim=reg_dim, component=component,
                   gas_component=gas_component, gas_names=gas_names,
                   gas_reddening=gas_reddening, clean=True, quiet=True)
@@ -364,7 +392,10 @@ def make_catalogue(file_names, method, nrand=9):
         hdr['HIERARCH mean_age_unr'] = mean_age[0]
         hdr['HIERARCH mean_metal_unr'] = mean_age[1]
         hdr['HIERARCH Mg/Fe'] = alpha
-        # hdr['HIERARCH velDisp'] = row['velDisp_ppxf']
+
+        hdr['HIERARCH velDisp'] = sigma  # Use the sigma value you already have
+        """ this is new! ^^^"""
+
         hdr['HIERARCH SNR'] = snr
         primary_hdu = fits.PrimaryHDU(header=hdr)
         hdulist = [primary_hdu, hdu_wei, hdu_regdim, hdu_age, hdu_metal, bestfit, lam, orig, gas]
@@ -387,7 +418,7 @@ def make_catalogue(file_names, method, nrand=9):
             galaxy1 = bootstrap_residuals(bestfit0, resid)
 
             pp = ppxf(templates, galaxy1, noise, velscale, start, moments=moments,
-                      degree=-1,mdegree=8, lam=wave, lam_temp=sps.lam_temp,
+                      degree=-1, mdegree=8, lam=wave, lam_temp=sps.lam_temp,
                       component=component,
                       gas_component=gas_component, gas_names=gas_names,
                       gas_reddening=gas_reddening, quiet=True)
@@ -395,7 +426,7 @@ def make_catalogue(file_names, method, nrand=9):
             noise = noise * np.sqrt(pp.chi2)
 
             pp = ppxf(templates, galaxy1, noise, velscale, start, moments=moments,
-                      degree=-1,mdegree=8, lam=wave, lam_temp=sps.lam_temp,
+                      degree=-1, mdegree=8, lam=wave, lam_temp=sps.lam_temp,
                       component=component,
                       gas_component=gas_component, gas_names=gas_names,
                       gas_reddening=gas_reddening, clean=True, quiet=True)
@@ -414,7 +445,8 @@ def make_catalogue(file_names, method, nrand=9):
         plt.title(f'PPXF Fit for {name}')
         plt.legend()
         plt.grid(True, alpha=0.2)
-        plt.show()
+        plt.savefig(savepath + name + '_ppxfout_UNR_fit.png')
+        plt.close()
 
         pp.weights = weights_array.sum(0)
         weights_err = weights_array.std(0)
@@ -444,7 +476,10 @@ def make_catalogue(file_names, method, nrand=9):
         hdr['HIERARCH mean_age_unr'] = mean_age[0]
         hdr['HIERARCH mean_metal_unr'] = mean_age[1]
         hdr['HIERARCH Mg/Fe'] = alpha
-        # hdr['HIERARCH velDisp'] = row['velDisp_ppxf']
+
+        hdr['HIERARCH velDisp'] = sigma  # Use the sigma value you already have
+        """^^^^"""
+
         hdr['HIERARCH SNR'] = snr
         primary_hdu = fits.PrimaryHDU(header=hdr)
         hdulist = [primary_hdu, hdu_wei, hdu_regdim, hdu_age, hdu_metal, bestfit, lam, orig, gas]
@@ -468,7 +503,7 @@ def make_catalogue(file_names, method, nrand=9):
 
         plt.tight_layout()
         plt.subplots_adjust(wspace=0.1)
-        plt.savefig(savepath + basename(ppxfout_file).replace('.fits', '.pdf'), dpi=120)
+        plt.savefig(savepath + basename(ppxfout_file).replace('.fits', '.png'), dpi=120)
         plt.close()
 
         ## Computing DoR values (also not needed for fitting stel pop parameters)
@@ -504,8 +539,276 @@ def make_catalogue(file_names, method, nrand=9):
         dors_100.append(dor_100)
         univ_ages.append(univ_age1)
 
-    ## Save everything
+        sigmas.append(sigma)
+        alphas.append(int(alpha) / 10)
+        names.append(filename)
+        sigma_maxs.append(sigma_max)
+        sigma_errs.append(sigma_err)
 
+
+
+
+
+
+        ## Now add the alpha+0.1 and alpha-0.1 calculations
+        # Get the original alpha value as a float for calculations
+        alpha_orig = int(alpha) / 10
+
+        # First, alpha+0.1 calculation (if applicable)
+        if alpha_orig < 0.4:  # Only do this if we're not already at the upper bound
+            # Calculate new alpha value
+            alpha_plus = alpha_orig + 0.1
+
+            # If at lower bound with flag, set to upper bound
+            if alpha_orig == 0 and alpha_flag == -1:
+                alpha_plus = 0.4
+
+            alpha_plus_str = str(int(alpha_plus * 10))
+
+            # Load the SSP models with new alpha
+            ssp_file_plus = f'data/MILES_SSP/alpha{alpha_plus_str}.npz'
+
+            try:
+                sps_plus = lib.sps_lib(ssp_file_plus, velscale, FWHM_gal,
+                                       age_range=[0, NedCalculator(redshift).zage_Gyr],
+                                       metal_range=[-2, 0.5])
+
+                reg_dim_plus = sps_plus.templates.shape[1:]
+                stars_templates_plus = sps_plus.templates.reshape(sps_plus.templates.shape[0], -1)
+
+                gas_templates_plus, gas_names_plus, line_wave_plus = util.emission_lines(
+                    sps_plus.ln_lam_temp, lam_range_gal, FWHM_gal, tie_balmer=tie_balmer,
+                    limit_doublets=limit_doublets)
+
+                templates_plus = np.column_stack([stars_templates_plus, gas_templates_plus])
+
+                # start_plus = [start, start, start]
+                start_plus = start
+                component_plus = [0] * stars_templates_plus.shape[1] + [1] * n_balmer + [2] * n_forbidden
+                gas_component_plus = np.array(component_plus) > 0
+
+                # First calculate noise for alpha+0.1
+                pp_plus = ppxf(templates_plus, galaxy, noise, velscale, start_plus, moments=moments,
+                               degree=-1, mdegree=8, lam=wave, lam_temp=sps_plus.lam_temp,
+                               regul=1 / regul_err, reg_dim=reg_dim_plus, component=component_plus,
+                               gas_component=gas_component_plus, gas_names=gas_names_plus,
+                               gas_reddening=gas_reddening, quiet=True)
+
+                noise_plus = noise * np.sqrt(pp_plus.chi2)
+
+                # Then full fit with corrected noise
+                pp_plus = ppxf(templates_plus, galaxy, noise_plus, velscale, start_plus, moments=moments,
+                               degree=-1, mdegree=8, lam=wave, lam_temp=sps_plus.lam_temp,
+                               regul=1 / regul_err, reg_dim=reg_dim_plus, component=component_plus,
+                               gas_component=gas_component_plus, gas_names=gas_names_plus,
+                               gas_reddening=gas_reddening, clean=True, quiet=True)
+
+                weights_plus = pp_plus.weights[~gas_component_plus]
+                weights_plus = weights_plus.reshape(reg_dim_plus) / weights_plus.sum()
+
+                mean_age_plus = sps_plus.mean_age_metal(weights_plus, quiet=True)
+                logAges_plus.append(mean_age_plus[0])
+                metals_plus.append(mean_age_plus[1])
+                snrs_plus.append(snr)  # Using the same SNR as original fit
+
+                # Save the results
+                hdu_wei = fits.ImageHDU(data=weights_plus, name='pp_weights')
+                hdu_regdim = fits.ImageHDU(data=reg_dim_plus, name='reg_dim')
+                hdu_age = fits.ImageHDU(data=sps_plus.age_grid, name='age_grid')
+                hdu_metal = fits.ImageHDU(data=sps_plus.metal_grid, name='metal_grid')
+                bestfit = fits.ImageHDU(data=pp_plus.bestfit, name='bestfit_spectrum')
+                lam = fits.ImageHDU(data=wave, name='wavelength')
+                orig = fits.ImageHDU(data=galaxy, name='original_spectrum')
+                gas = fits.ImageHDU(data=pp_plus.gas_bestfit, name='gas_bestfit')
+
+                hdr = fits.Header()
+                hdr['HIERARCH NAME'] = name
+                hdr['HIERARCH z'] = z_orig
+                hdr['HIERARCH mean_age_unr'] = mean_age_plus[0]
+                hdr['HIERARCH mean_metal_unr'] = mean_age_plus[1]
+                hdr['HIERARCH Mg/Fe'] = alpha_plus_str  # Using string version for consistency
+                hdr['HIERARCH velDisp'] = sigma
+                hdr['HIERARCH SNR'] = snr
+
+                primary_hdu = fits.PrimaryHDU(header=hdr)
+                hdulist = [primary_hdu, hdu_wei, hdu_regdim, hdu_age, hdu_metal, bestfit, lam, orig, gas]
+                hdulis = fits.HDUList(hdulist)
+
+                savepath = 'outputs/ppxf_fits/'
+                hdulis.writeto(savepath + name + '_ppxfout_plus.fits', overwrite=True)
+
+                # Now compute SFH parameters for alpha+0.1
+                try:
+                    ppxfout_file_plus = savepath + name + '_ppxfout_plus.fits'
+                    name_plus, z_plus, agesplot_plus, weiplot_plus, univ_age_plus = read_fits_summary(ppxfout_file_plus)
+                    df_out_plus = pd.DataFrame({'time': agesplot_plus, 'regul0': weiplot_plus})
+                    y_z2_plus, x_075_plus, x_090_plus, x_100_plus, dor_90_plus, dor_100_plus = get_values_from_sfh(
+                        univ_age_plus, df_out_plus, "regul0")
+
+                    # Store the values
+                    mass_fracs_plus.append(y_z2_plus)
+                    times_75_plus.append(x_075_plus)
+                    times_90_plus.append(x_090_plus)
+                    times_100_plus.append(x_100_plus)
+                    dors_100_plus.append(dor_100_plus)
+                except Exception as e:
+                    print(f"Error in SFH calculation for alpha+0.1 {name}: {e}")
+                    mass_fracs_plus.append(None)
+                    times_75_plus.append(None)
+                    times_90_plus.append(None)
+                    times_100_plus.append(None)
+                    dors_100_plus.append(None)
+
+            except Exception as e:
+                print(f"Error in alpha+0.1 calculation for {name}: {e}")
+                # Append None values if calculation fails
+                logAges_plus.append(None)
+                metals_plus.append(None)
+                snrs_plus.append(None)
+                mass_fracs_plus.append(None)
+                times_75_plus.append(None)
+                times_90_plus.append(None)
+                times_100_plus.append(None)
+                dors_100_plus.append(None)
+        else:
+            # If already at upper bound, just append None or duplicate values
+            logAges_plus.append(None)
+            metals_plus.append(None)
+            snrs_plus.append(None)
+            mass_fracs_plus.append(None)
+            times_75_plus.append(None)
+            times_90_plus.append(None)
+            times_100_plus.append(None)
+            dors_100_plus.append(None)
+
+        # Second, alpha-0.1 calculation (if applicable)
+        if alpha_orig > 0:  # Only do this if we're not already at the lower bound
+            # Calculate new alpha value
+            alpha_minus = alpha_orig - 0.1
+
+            # If at upper bound with flag, set to lower bound
+            if alpha_orig == 0.4 and alpha_flag == 1:
+                alpha_minus = 0
+
+            alpha_minus_str = str(int(alpha_minus * 10))
+
+            # Load the SSP models with new alpha
+            ssp_file_minus = f'data/MILES_SSP/alpha{alpha_minus_str}.npz'
+
+            try:
+                sps_minus = lib.sps_lib(ssp_file_minus, velscale, FWHM_gal,
+                                        age_range=[0, NedCalculator(redshift).zage_Gyr],
+                                        metal_range=[-2, 0.5])
+
+                reg_dim_minus = sps_minus.templates.shape[1:]
+                stars_templates_minus = sps_minus.templates.reshape(sps_minus.templates.shape[0], -1)
+
+                gas_templates_minus, gas_names_minus, line_wave_minus = util.emission_lines(
+                    sps_minus.ln_lam_temp, lam_range_gal, FWHM_gal, tie_balmer=tie_balmer,
+                    limit_doublets=limit_doublets)
+
+                templates_minus = np.column_stack([stars_templates_minus, gas_templates_minus])
+
+                # start_minus = [start, start, start]
+                start_minus = start
+                component_minus = [0] * stars_templates_minus.shape[1] + [1] * n_balmer + [2] * n_forbidden
+                gas_component_minus = np.array(component_minus) > 0
+
+                # First calculate noise for alpha-0.1
+                pp_minus = ppxf(templates_minus, galaxy, noise, velscale, start_minus, moments=moments,
+                                degree=-1, mdegree=8, lam=wave, lam_temp=sps_minus.lam_temp,
+                                regul=1 / regul_err, reg_dim=reg_dim_minus, component=component_minus,
+                                gas_component=gas_component_minus, gas_names=gas_names_minus,
+                                gas_reddening=gas_reddening, quiet=True)
+
+                noise_minus = noise * np.sqrt(pp_minus.chi2)
+
+                # Then full fit with corrected noise
+                pp_minus = ppxf(templates_minus, galaxy, noise_minus, velscale, start_minus, moments=moments,
+                                degree=-1, mdegree=8, lam=wave, lam_temp=sps_minus.lam_temp,
+                                regul=1 / regul_err, reg_dim=reg_dim_minus, component=component_minus,
+                                gas_component=gas_component_minus, gas_names=gas_names_minus,
+                                gas_reddening=gas_reddening, clean=True, quiet=True)
+
+                weights_minus = pp_minus.weights[~gas_component_minus]
+                weights_minus = weights_minus.reshape(reg_dim_minus) / weights_minus.sum()
+
+                mean_age_minus = sps_minus.mean_age_metal(weights_minus, quiet=True)
+                logAges_minus.append(mean_age_minus[0])
+                metals_minus.append(mean_age_minus[1])
+                snrs_minus.append(snr)  # Using the same SNR as original fit
+
+                # Save the results
+                hdu_wei = fits.ImageHDU(data=weights_minus, name='pp_weights')
+                hdu_regdim = fits.ImageHDU(data=reg_dim_minus, name='reg_dim')
+                hdu_age = fits.ImageHDU(data=sps_minus.age_grid, name='age_grid')
+                hdu_metal = fits.ImageHDU(data=sps_minus.metal_grid, name='metal_grid')
+                bestfit = fits.ImageHDU(data=pp_minus.bestfit, name='bestfit_spectrum')
+                lam = fits.ImageHDU(data=wave, name='wavelength')
+                orig = fits.ImageHDU(data=galaxy, name='original_spectrum')
+                gas = fits.ImageHDU(data=pp_minus.gas_bestfit, name='gas_bestfit')
+
+                hdr = fits.Header()
+                hdr['HIERARCH NAME'] = name
+                hdr['HIERARCH z'] = z_orig
+                hdr['HIERARCH mean_age_unr'] = mean_age_minus[0]
+                hdr['HIERARCH mean_metal_unr'] = mean_age_minus[1]
+                hdr['HIERARCH Mg/Fe'] = alpha_minus_str  # Using string version for consistency
+                hdr['HIERARCH velDisp'] = sigma
+                hdr['HIERARCH SNR'] = snr
+
+                primary_hdu = fits.PrimaryHDU(header=hdr)
+                hdulist = [primary_hdu, hdu_wei, hdu_regdim, hdu_age, hdu_metal, bestfit, lam, orig, gas]
+                hdulis = fits.HDUList(hdulist)
+
+                savepath = 'outputs/ppxf_fits/'
+                hdulis.writeto(savepath + name + '_ppxfout_minus.fits', overwrite=True)
+                # Now compute SFH parameters for alpha-0.1
+                try:
+                    ppxfout_file_minus = savepath + name + '_ppxfout_minus.fits'
+                    name_minus, z_minus, agesplot_minus, weiplot_minus, univ_age_minus = read_fits_summary(
+                        ppxfout_file_minus)
+                    df_out_minus = pd.DataFrame({'time': agesplot_minus, 'regul0': weiplot_minus})
+                    y_z2_minus, x_075_minus, x_090_minus, x_100_minus, dor_90_minus, dor_100_minus = get_values_from_sfh(
+                        univ_age_minus, df_out_minus, "regul0")
+
+                    # Store the values
+                    mass_fracs_minus.append(y_z2_minus)
+                    times_75_minus.append(x_075_minus)
+                    times_90_minus.append(x_090_minus)
+                    times_100_minus.append(x_100_minus)
+                    dors_100_minus.append(dor_100_minus)
+                except Exception as e:
+                    print(f"Error in SFH calculation for alpha-0.1 {name}: {e}")
+                    mass_fracs_minus.append(None)
+                    times_75_minus.append(None)
+                    times_90_minus.append(None)
+                    times_100_minus.append(None)
+                    dors_100_minus.append(None)
+
+            except Exception as e:
+                print(f"Error in alpha-0.1 calculation for {name}: {e}")
+                # Append None values if calculation fails
+                logAges_minus.append(None)
+                metals_minus.append(None)
+                snrs_minus.append(None)
+                mass_fracs_minus.append(None)
+                times_75_minus.append(None)
+                times_90_minus.append(None)
+                times_100_minus.append(None)
+                dors_100_minus.append(None)
+        else:
+            # If already at lower bound, just append None or duplicate values
+            logAges_minus.append(None)
+            metals_minus.append(None)
+            snrs_minus.append(None)
+            mass_fracs_minus.append(None)
+            times_75_minus.append(None)
+            times_90_minus.append(None)
+            times_100_minus.append(None)
+            dors_100_minus.append(None)
+
+    ## Save everything - this should be outside the loop
     df_dor = pd.DataFrame()
     df_dor['logAge'] = logAges
     df_dor['[M/H]'] = metals
@@ -530,7 +833,87 @@ def make_catalogue(file_names, method, nrand=9):
     df_dor['time_100_unr'] = times_100u
     df_dor['dor_100_unr'] = dors_100u
 
+    # Add alpha+0.1 results
+    df_dor['logAge_plus'] = logAges_plus
+    df_dor['[M/H]_plus'] = metals_plus
+    df_dor['SNR_plus'] = snrs_plus
+    df_dor['mass_frac_plus'] = mass_fracs_plus
+    df_dor['time_75_plus'] = times_75_plus
+    df_dor['time_90_plus'] = times_90_plus
+    df_dor['time_100_plus'] = times_100_plus
+    df_dor['dor_100_plus'] = dors_100_plus
+
+    # Add alpha-0.1 results
+    df_dor['logAge_minus'] = logAges_minus
+    df_dor['[M/H]_minus'] = metals_minus
+    df_dor['SNR_minus'] = snrs_minus
+    df_dor['mass_frac_min'] = mass_fracs_minus
+    df_dor['time_75_min'] = times_75_minus
+    df_dor['time_90_min'] = times_90_minus
+    df_dor['time_100_min'] = times_100_minus
+    df_dor['dor_100_min'] = dors_100_minus
+
+    # Add alpha flag to indicate boundary values
+    df_dor['alpha_flag'] = alpha_flags
+
+    # Add velocity dispersion, alpha, and filenames
+    df_dor['vel_disp_avg'] = sigmas
+    df_dor['vel_disp_err'] = sigma_errs
+    df_dor['vel_disp_max'] = sigma_maxs
+    df_dor['alpha'] = alphas
+    df_dor['filename'] = names
+
+    # Add the dor column needed for plotting
+    df_dor['dor'] = df_dor['dor_100']
+
+    """
+    # Going to calculate this in plotting instead as its a bit useless elsewhere. 
+    # Calculate the t_ass_err for the third plot
+    # This is the standard deviation of the values used to compute the ratio
+    t_ass_values = []
+    for i in range(len(df_dor)):
+        values = []
+        # Add the regular value
+        values.append((df_dor['univ_age'].iloc[i] - df_dor['time_100'].iloc[i]) / df_dor['univ_age'].iloc[i])
+
+        # Add the regularized and unregularized values if available
+        reg_val = (df_dor['univ_age'].iloc[i] - df_dor['time_100_reg'].iloc[i]) / df_dor['univ_age'].iloc[i] if pd.notna(df_dor['time_100_reg'].iloc[i]) else None
+        if reg_val is not None:
+            values.append(reg_val)
+
+        unreg_val = (df_dor['univ_age'].iloc[i] - df_dor['time_100_unr'].iloc[i]) / df_dor['univ_age'].iloc[i] if pd.notna(df_dor['time_100_unr'].iloc[i]) else None
+        if unreg_val is not None:
+            values.append(unreg_val)
+
+        # Add the alpha+ value if available
+        if pd.notna(df_dor['time_100_plus'].iloc[i]):
+            plus_val = (df_dor['univ_age'].iloc[i] - df_dor['time_100_plus'].iloc[i]) / df_dor['univ_age'].iloc[i]
+            values.append(plus_val)
+
+        # Add the alpha- value if available
+        if pd.notna(df_dor['time_100_min'].iloc[i]):
+            min_val = (df_dor['univ_age'].iloc[i] - df_dor['time_100_min'].iloc[i]) / df_dor['univ_age'].iloc[i]
+            values.append(min_val)
+
+        # Calculate standard deviation if we have values
+        if values:
+            t_ass_values.append(np.nanstd(values))
+        else:
+            t_ass_values.append(0.01)  # Default small error if no values available
+
+    df_dor['t_ass_err'] = t_ass_values"""
+
+    # Create directory if it doesn't exist
+    os.makedirs('outputs/stacked_catalogues', exist_ok=True)
+
+    # Save the catalog with all the original and new measurements
     df_dor.to_csv(f'outputs/stacked_catalogues/CATALOGUE_{method}.csv', index=False)
+
+
+
+
+
+
 
 
 def combine_catalogues():
@@ -596,7 +979,3 @@ def fit_spectra(nrand):
         print(f"\n================================")
 
     combine_catalogues()
-
-
-if __name__ == '__main__':
-    fit_spectra()
