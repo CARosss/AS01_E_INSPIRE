@@ -195,7 +195,7 @@ def get_values_from_sfh(univ_age, sfh_table, ycol):
 def make_catalogue(file_names, method, nrand=9):
     tie_balmer = True
     limit_doublets = True
-    metal_range = [-2,0.35]
+    metal_range = [-2,0.5]
 
     c = 299792.458  # speed of light in km/s
 
@@ -332,6 +332,7 @@ def make_catalogue(file_names, method, nrand=9):
 
         # Load the SSP models
         ssp_file = f'data/MILES_SSP/alpha{alpha}.npz'
+        # ssp_file = f'data/MILES_SSP_SAFE/alpha{alpha}.npz'
         sps = lib.sps_lib(ssp_file, velscale, FWHM_gal, age_range=[0, NedCalculator(redshift).zage_Gyr],
                           metal_range=metal_range)
 
@@ -562,9 +563,6 @@ def make_catalogue(file_names, method, nrand=9):
 
         radii.append(radius)
         radii_errs.append(radius_err)
-
-
-
 
         ## Now add the alpha+0.1 and alpha-0.1 calculations
         # Get the original alpha value as a float for calculations
