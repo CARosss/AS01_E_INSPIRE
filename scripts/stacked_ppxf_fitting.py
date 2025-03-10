@@ -195,6 +195,7 @@ def get_values_from_sfh(univ_age, sfh_table, ycol):
 def make_catalogue(file_names, method, nrand=9):
     tie_balmer = True
     limit_doublets = True
+    metal_range = [-2,0.35]
 
     c = 299792.458  # speed of light in km/s
 
@@ -266,7 +267,15 @@ def make_catalogue(file_names, method, nrand=9):
     sigma_maxs = []
     sigma_errs=[]
 
+    masses = []
+    mass_errs = []
+
+    radii = []
+    radii_errs = []
+
+
     for i, filename in enumerate(file_names):
+        print('\n')
         print("Doing:", filename)
         hdu = fits.open(filename, ignore_missing_simple=True)
 
@@ -282,10 +291,11 @@ def make_catalogue(file_names, method, nrand=9):
         sigma_max = hdu[0].header['SIGMA_MAX']
         sigma_err = hdu[0].header['SIGMA_ERR']
 
-        # sigma = t['sigma'][0]
-        # alpha = t['ALPHA'][0]
-        # array of the average alpha (repeated many times for formatting sake)
-        # SWAP OUT FOR WHATEVER JOHN CALCULATES!!!
+        mass = hdu[0].header['logM']
+        mass_err = hdu[0].header['errlogM']
+
+        radius = hdu[0].header['meanRadkpc_r']
+        radius_err = hdu[0].header['meanRadErrkpc_r']
 
         redshift = 0
 
@@ -314,7 +324,7 @@ def make_catalogue(file_names, method, nrand=9):
         print(snrs)
         wave *= np.median(util.vac_to_air(wave) / wave)
 
-        noise = np.full_like(galaxy, 0.02)  # Assume constant noise per pixel here
+        noise = np.full_like(galaxy, fill_value=0.012)  # Assume constant noise per pixel here
 
         d_ln_lam = np.log(wave[-1] / wave[0]) / (wave.size - 1)  # Average ln_lam step
         velscale = c * d_ln_lam  # eq. (8) of Cappellari (2017)
@@ -323,7 +333,7 @@ def make_catalogue(file_names, method, nrand=9):
         # Load the SSP models
         ssp_file = f'data/MILES_SSP/alpha{alpha}.npz'
         sps = lib.sps_lib(ssp_file, velscale, FWHM_gal, age_range=[0, NedCalculator(redshift).zage_Gyr],
-                          metal_range=[-2, 0.5])
+                          metal_range=metal_range)
 
         reg_dim = sps.templates.shape[1:]
         stars_templates = sps.templates.reshape(sps.templates.shape[0], -1)
@@ -424,6 +434,8 @@ def make_catalogue(file_names, method, nrand=9):
                       gas_reddening=gas_reddening, quiet=True)
 
             noise = noise * np.sqrt(pp.chi2)
+
+            print('chi2 in loop: ',pp.chi2)
 
             pp = ppxf(templates, galaxy1, noise, velscale, start, moments=moments,
                       degree=-1, mdegree=8, lam=wave, lam_temp=sps.lam_temp,
@@ -545,7 +557,11 @@ def make_catalogue(file_names, method, nrand=9):
         sigma_maxs.append(sigma_max)
         sigma_errs.append(sigma_err)
 
+        masses.append(mass)
+        mass_errs.append(mass_err)
 
+        radii.append(radius)
+        radii_errs.append(radius_err)
 
 
 
@@ -571,7 +587,7 @@ def make_catalogue(file_names, method, nrand=9):
             try:
                 sps_plus = lib.sps_lib(ssp_file_plus, velscale, FWHM_gal,
                                        age_range=[0, NedCalculator(redshift).zage_Gyr],
-                                       metal_range=[-2, 0.5])
+                                       metal_range=metal_range)
 
                 reg_dim_plus = sps_plus.templates.shape[1:]
                 stars_templates_plus = sps_plus.templates.reshape(sps_plus.templates.shape[0], -1)
@@ -698,7 +714,7 @@ def make_catalogue(file_names, method, nrand=9):
             try:
                 sps_minus = lib.sps_lib(ssp_file_minus, velscale, FWHM_gal,
                                         age_range=[0, NedCalculator(redshift).zage_Gyr],
-                                        metal_range=[-2, 0.5])
+                                        metal_range=metal_range)
 
                 reg_dim_minus = sps_minus.templates.shape[1:]
                 stars_templates_minus = sps_minus.templates.reshape(sps_minus.templates.shape[0], -1)
@@ -863,45 +879,14 @@ def make_catalogue(file_names, method, nrand=9):
     df_dor['alpha'] = alphas
     df_dor['filename'] = names
 
+    df_dor['logM'] = masses
+    df_dor['errlogM'] = mass_err
+
+    df_dor['meanRadkpc_r'] = radii
+    df_dor['meanRadErrkpc_r'] = radii_errs
+
     # Add the dor column needed for plotting
     df_dor['dor'] = df_dor['dor_100']
-
-    """
-    # Going to calculate this in plotting instead as its a bit useless elsewhere. 
-    # Calculate the t_ass_err for the third plot
-    # This is the standard deviation of the values used to compute the ratio
-    t_ass_values = []
-    for i in range(len(df_dor)):
-        values = []
-        # Add the regular value
-        values.append((df_dor['univ_age'].iloc[i] - df_dor['time_100'].iloc[i]) / df_dor['univ_age'].iloc[i])
-
-        # Add the regularized and unregularized values if available
-        reg_val = (df_dor['univ_age'].iloc[i] - df_dor['time_100_reg'].iloc[i]) / df_dor['univ_age'].iloc[i] if pd.notna(df_dor['time_100_reg'].iloc[i]) else None
-        if reg_val is not None:
-            values.append(reg_val)
-
-        unreg_val = (df_dor['univ_age'].iloc[i] - df_dor['time_100_unr'].iloc[i]) / df_dor['univ_age'].iloc[i] if pd.notna(df_dor['time_100_unr'].iloc[i]) else None
-        if unreg_val is not None:
-            values.append(unreg_val)
-
-        # Add the alpha+ value if available
-        if pd.notna(df_dor['time_100_plus'].iloc[i]):
-            plus_val = (df_dor['univ_age'].iloc[i] - df_dor['time_100_plus'].iloc[i]) / df_dor['univ_age'].iloc[i]
-            values.append(plus_val)
-
-        # Add the alpha- value if available
-        if pd.notna(df_dor['time_100_min'].iloc[i]):
-            min_val = (df_dor['univ_age'].iloc[i] - df_dor['time_100_min'].iloc[i]) / df_dor['univ_age'].iloc[i]
-            values.append(min_val)
-
-        # Calculate standard deviation if we have values
-        if values:
-            t_ass_values.append(np.nanstd(values))
-        else:
-            t_ass_values.append(0.01)  # Default small error if no values available
-
-    df_dor['t_ass_err'] = t_ass_values"""
 
     # Create directory if it doesn't exist
     os.makedirs('outputs/stacked_catalogues', exist_ok=True)

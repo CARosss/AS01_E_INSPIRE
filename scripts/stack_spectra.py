@@ -136,7 +136,8 @@ def combine_spectra(aligned_spectra):
     return wavelength, combined_flux, combined_ivar
 
 
-def save_fits(wavelength, flux, combined_ivar, cluster_name, mgfe, sigma_fin, vdisp_avg, vdisp_std):
+def save_fits(wavelength, flux, combined_ivar, cluster_name, mgfe, sigma_fin, vdisp_avg,
+              vdisp_std, logM, logM_err, radius, radius_err):
     coadd_data = np.zeros(len(wavelength), dtype=[
         ('flux', 'f8'), ('wave', 'f8'),
         ('ivar', 'f8'), ('wdisp', 'f8')
@@ -157,6 +158,12 @@ def save_fits(wavelength, flux, combined_ivar, cluster_name, mgfe, sigma_fin, vd
     primary_hdu.header['HIERARCH SIGMA'] = vdisp_avg
     primary_hdu.header['HIERARCH SIGMA_ERR'] = vdisp_std
 
+    primary_hdu.header['HIERARCH logM'] = logM
+    primary_hdu.header['HIERARCH errlogM'] = logM_err
+
+    primary_hdu.header['HIERARCH meanRadkpc_r'] = radius
+    primary_hdu.header['HIERARCH meanRadErrkpc_r'] = radius_err
+
 
     hdul = fits.HDUList([primary_hdu, coadd_hdu])
     output_file = f'data/stacked_fits/stacked_{cluster_name}.fits'
@@ -165,18 +172,24 @@ def save_fits(wavelength, flux, combined_ivar, cluster_name, mgfe, sigma_fin, vd
     return output_file
 
 
-def stack_spectra(spectra, factor, cluster_name):
+def stack_spectra(spectra_list, factor, cluster_name):
     # Load data and get properties
     catalogue = pd.read_csv('data/E-INSPIRE_I_master_catalogue.csv')
     data = []
     mgfe = []
     vdisps = []
+    vdisp_errs = []
     ages = []
     metallicity = []
     DoRs = []
+
     masses = []
     mass_errs = []
-    for filename in spectra:
+
+    radii = []
+    radii_errs = []
+
+    for filename in spectra_list:
         wave, flux, ivar = load_spectrum("data/fits_shortlist/" + filename)
         plate, mjd, fiber = map(int, re.match(r'spec-(\d{4})-(\d{5})-(\d{4})\.fits', filename).groups())
 
@@ -192,13 +205,18 @@ def stack_spectra(spectra, factor, cluster_name):
         ages.append(matching_row['age_mean_mass'].iloc[0])
         metallicity.append(matching_row['[M/H]_mean_mass'].iloc[0])
         DoRs.append(float(matching_row['DoR'].iloc[0]))
+        vdisp_errs.append(float(matching_row['velDisp_ppxf_err_res'].iloc[0]))
 
-        masses.append(10**matching_row['logM*'].iloc[0])
-        mass_errs.append(10**matching_row['errlogM*'].iloc[0])
+        log_mass = matching_row['logM*'].iloc[0]
+        log_mass_err = matching_row['errlogM*'].iloc[0]
+        masses.append(log_mass)
+        mass_errs.append(log_mass_err)
 
+        radii.append(float(matching_row['meanRadkpc_r'].iloc[0]))
+        radii_errs.append(float(matching_row['meanRadErrkpc_r'].iloc[0]))
 
     # Print statistics
-    print(f"STATS: ({len(spectra)} items)")
+    print(f"STATS: ({len(spectra_list)} items)")
     print("--> Max vdisp:", max(vdisps))
     print("--> Avg vdisp:", np.mean(vdisps))
     print("--> mgfe avg:", np.mean(mgfe))
@@ -220,5 +238,14 @@ def stack_spectra(spectra, factor, cluster_name):
     # Save results
     mgfe_avg = round(np.mean(mgfe), 1)
     vdisp_avg = round(np.mean(vdisps), 1)
-    vdisp_std = round(np.std(vdisps), 1)
-    save_fits(wavelength, flux, combined_ivar, cluster_name, mgfe_avg, sigma_fin, vdisp_avg, vdisp_std)
+    # vdisp_err= round(np.std(vdisps), 1)  # use this for err = std if so inclined
+    vdisp_err = np.sqrt(np.sum(np.array(vdisp_errs) ** 2)) / len(vdisps)
+
+    logM = np.mean(masses)
+    logM_err = np.sqrt(np.sum(np.array(mass_errs) ** 2)) / len(masses)
+
+    radius = np.mean(radii)
+    radius_err = np.sqrt(np.sum(np.array(radii_errs) ** 2)) / len(radii)
+
+    save_fits(wavelength, flux, combined_ivar, cluster_name, mgfe_avg, sigma_fin, vdisp_avg,
+              vdisp_err, logM, logM_err, radius, radius_err)
