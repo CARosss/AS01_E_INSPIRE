@@ -199,6 +199,7 @@ def stack_spectra(spectra_list, factor, cluster_name):
             (catalogue['fiberid'] == fiber)
             ]
 
+
         data.append([wave, flux, ivar])
         mgfe.append(float(matching_row['MgFe'].iloc[0]))
         vdisps.append(float(matching_row["velDisp_ppxf_res"].iloc[0]))

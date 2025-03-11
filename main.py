@@ -2,9 +2,11 @@ import os
 from pathlib import Path
 import pandas as pd
 import numpy as np
+from torch.nn.functional import threshold
+
 from scripts.stack_spectra import stack_spectra
 from scripts.stacked_ppxf_fitting import fit_spectra
-
+from scripts.rf_export_grouping import run_clustering
 
 def setup_directories():
     directories = [
@@ -101,6 +103,11 @@ def get_cluster_assignments():
 
 
 def process_clusters():
+
+    df = pd.read_csv('data/cluster_results/regression_clusters.csv')
+    l = int(len(df['Cluster'].unique()))
+    print(l)
+
     cluster_groups = get_cluster_assignments()
 
     # Define parameters for visualization (fixed for 3 clusters)
@@ -114,7 +121,7 @@ def process_clusters():
         print(f"Processing {method} clusters")
 
         # Create labels
-        method_labels = [f"{method}_{i}" for i in range(3)]
+        method_labels = [f"{method}_{i}" for i in range(l)]
 
         # Stack spectra for each cluster
         for spectra, color, label, factor in zip(groups, colors, method_labels, factors):
@@ -125,15 +132,12 @@ def process_clusters():
 
 
 def main():
-    # Setup
     setup_directories()
-
-    # Run analysis
+    run_clustering(binary=True, binary_threshold=0.4)
     process_clusters()
     fit_spectra(nrand=9)
 
     print("\nAnalysis complete!")
-    print("Check outputs/stacked_catalogues for results.")
 
 
 if __name__ == "__main__":

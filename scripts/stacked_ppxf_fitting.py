@@ -321,7 +321,7 @@ def make_catalogue(file_names, method, nrand=9):
 
         snr = DER_SNR(galaxy)  # Compute SNR
         snrs.append(snr)
-        print(snrs)
+        # print(snrs)
         wave *= np.median(util.vac_to_air(wave) / wave)
 
         noise = np.full_like(galaxy, fill_value=0.012)  # Assume constant noise per pixel here
@@ -331,8 +331,8 @@ def make_catalogue(file_names, method, nrand=9):
         FWHM_gal = 2.76 / (1 + redshift)  # SDSS has an approximate instrumental resolution FWHM of 2.76A.
 
         # Load the SSP models
-        ssp_file = f'data/MILES_SSP/alpha{alpha}.npz'
-        # ssp_file = f'data/MILES_SSP_SAFE/alpha{alpha}.npz'
+        # ssp_file = f'data/MILES_SSP/alpha{alpha}.npz'
+        ssp_file = f'data/MILES_SSP_SAFE/alpha{alpha}_safe.npz'
         sps = lib.sps_lib(ssp_file, velscale, FWHM_gal, age_range=[0, NedCalculator(redshift).zage_Gyr],
                           metal_range=metal_range)
 
@@ -580,7 +580,8 @@ def make_catalogue(file_names, method, nrand=9):
             alpha_plus_str = str(int(alpha_plus * 10))
 
             # Load the SSP models with new alpha
-            ssp_file_plus = f'data/MILES_SSP/alpha{alpha_plus_str}.npz'
+            # ssp_file_plus = f'data/MILES_SSP/alpha{alpha_plus_str}.npz'
+            ssp_file_plus = f'data/MILES_SSP_SAFE/alpha{alpha_plus_str}_safe.npz'
 
             try:
                 sps_plus = lib.sps_lib(ssp_file_plus, velscale, FWHM_gal,
@@ -707,7 +708,8 @@ def make_catalogue(file_names, method, nrand=9):
             alpha_minus_str = str(int(alpha_minus * 10))
 
             # Load the SSP models with new alpha
-            ssp_file_minus = f'data/MILES_SSP/alpha{alpha_minus_str}.npz'
+            # ssp_file_minus = f'data/MILES_SSP/alpha{alpha_minus_str}.npz'
+            ssp_file_minus = f'data/MILES_SSP_SAFE/alpha{alpha_minus_str}_safe.npz'
 
             try:
                 sps_minus = lib.sps_lib(ssp_file_minus, velscale, FWHM_gal,
