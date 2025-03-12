@@ -231,7 +231,7 @@ def plot_residuals_from_kfold(fold_results, target='DoR', output_path=None):
 
     ax.set_xlabel(f'True {target}', fontsize=16)
     ax.set_ylabel('Residuals (True - Predicted)', fontsize=16)
-    ax.set_title('Residuals vs. True Values from K-Fold Cross-Validation', fontsize=18)
+    #ax.set_title('Residuals vs. True Values from K-Fold Cross-Validation', fontsize=18)
 
     ax.grid(True, alpha=0.3)
     ax.tick_params(axis='both', which='both', direction='in', labelsize=14)
@@ -294,7 +294,7 @@ def export_dor_groups_from_kfold(df, pred_df, output_path, small_boundary=0.35, 
     plt.axvline(large_boundary, color='green', linestyle='--', label=f'Large boundary ({large_boundary})')
     plt.xlabel('DoR Value')
     plt.ylabel('Frequency')
-    plt.title('Distribution of True vs Predicted DoR Values (K-Fold CV)')
+    #plt.title('Distribution of True vs Predicted DoR Values (K-Fold CV)')
     plt.legend()
     plt.grid(True, alpha=0.3)
 
@@ -418,7 +418,7 @@ def export_binary_dor_groups_from_kfold(df, pred_df, output_path, threshold=0.5,
                 label=f'Binary threshold ({threshold})')
     plt.xlabel('DoR Value')
     plt.ylabel('Frequency')
-    plt.title('Distribution of True vs Predicted DoR Values with Binary Threshold')
+    # plt.title('Distribution of True vs Predicted DoR Values with Binary Threshold')
     plt.legend()
     plt.grid(True, alpha=0.3)
 

@@ -404,7 +404,7 @@ def make_catalogue(file_names, method, nrand=9):
         hdr['HIERARCH mean_metal_unr'] = mean_age[1]
         hdr['HIERARCH Mg/Fe'] = alpha
 
-        hdr['HIERARCH velDisp'] = sigma  # Use the sigma value you already have
+        hdr['HIERARCH velDisp'] = sigma
         """ this is new! ^^^"""
 
         hdr['HIERARCH SNR'] = snr
