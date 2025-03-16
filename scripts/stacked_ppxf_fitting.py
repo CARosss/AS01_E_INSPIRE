@@ -368,8 +368,6 @@ def make_catalogue(file_names, method, nrand=9):
 
         noise = noise * np.sqrt(pp.chi2)
 
-        print("chi2 = ", pp.chi2)
-
         pp = ppxf(templates, galaxy, noise, velscale, start, moments=moments,
                   degree=-1, mdegree=8, lam=wave, lam_temp=sps.lam_temp,
                   regul=1 / regul_err, reg_dim=reg_dim, component=component,
@@ -435,8 +433,6 @@ def make_catalogue(file_names, method, nrand=9):
                       gas_reddening=gas_reddening, quiet=True)
 
             noise = noise * np.sqrt(pp.chi2)
-
-            print('chi2 in loop: ',pp.chi2)
 
             pp = ppxf(templates, galaxy1, noise, velscale, start, moments=moments,
                       degree=-1, mdegree=8, lam=wave, lam_temp=sps.lam_temp,

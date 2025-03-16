@@ -129,7 +129,7 @@ def visualize_kfold_predictions(df, features, target='DoR', n_splits=5, model_pa
     # Add textbox with performance metrics
     props = dict(boxstyle='round', facecolor='white', alpha=0.8, edgecolor='black')
     textstr = '\n'.join((
-        r'$\mathrm{Overall}\ R^2 = %.4f$' % (overall_r2,),
+        # r'$\mathrm{Overall}\ R^2 = %.4f$' % (overall_r2,),
         r'$\mathrm{Mean}\ R^2 = %.4f\ (\pm%.4f)$' % (mean_fold_r2, std_fold_r2),
     ))
     ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14,
@@ -213,7 +213,6 @@ def plot_residuals_from_kfold(fold_results, target='DoR', output_path=None):
     # Add overall metrics in a textbox
     props = dict(boxstyle='square', facecolor='white', alpha=0.8, edgecolor='black')
     textstr = '\n'.join((
-        r'$\mathrm{MAE} = %.4f$' % (mae,),
         r'$\mathrm{RMSE} = %.4f$' % (rmse,)
     ))
     ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14,
@@ -351,34 +350,8 @@ def run_kfold_prediction_and_export(df, features, target='DoR', n_splits=5, mode
 
 def export_binary_dor_groups_from_kfold(df, pred_df, output_path, threshold=0.5,
                                         csv_name='Binary_DoR_Groups_KFold.csv'):
-    """
-    Export DoR groups split into two categories based on a single threshold.
-
-    Parameters:
-    -----------
-    df : pandas.DataFrame
-        Original dataframe containing spectroscopic data
-    pred_df : pandas.DataFrame
-        DataFrame with predictions from k-fold cross-validation
-    output_path : str
-        Path to save the output files
-    threshold : float, default=0.5
-        The threshold to split DoR groups (below/above)
-    csv_name : str, default='Binary_DoR_Groups_KFold.csv'
-        Name of the output CSV file
-
-    Returns:
-    --------
-    pandas.DataFrame
-        DataFrame containing SDSS IDs, binary groups, and DoR values
-    """
-    import os
-    import numpy as np
-    import pandas as pd
-    import matplotlib.pyplot as plt
 
     os.makedirs(output_path, exist_ok=True)
-
     # Create SDSS identifiers
     sdss_ids = [
         f"spec-{int(plate):04d}-{int(mjd):05d}-{int(fiber):04d}.fits"
@@ -423,9 +396,9 @@ def export_binary_dor_groups_from_kfold(df, pred_df, output_path, threshold=0.5,
     plt.grid(True, alpha=0.3)
 
     # Save histogram
-    hist_filename = os.path.join(output_path, f'binary_distribution_{csv_name.replace(".csv", ".png")}')
-    #plt.savefig(hist_filename, bbox_inches='tight')
-    #plt.show()
+    hist_filename = os.path.join(output_path, f'distribution_{csv_name.replace(".csv", ".png")}')
+    plt.savefig(hist_filename, bbox_inches='tight')
+    plt.show()
 
     return results_df
 
@@ -435,8 +408,6 @@ def run_kfold_prediction_and_export_binary(df, features, target='DoR', n_splits=
                                            figure_name='kfold_predictions.png',
                                            residuals_figure_name='kfold_residuals.png',
                                            csv_name='binary_kfold_dor_groups.csv'):
-
-    import os
 
     os.makedirs(output_path, exist_ok=True)
 

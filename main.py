@@ -2,11 +2,9 @@ import os
 from pathlib import Path
 import pandas as pd
 import numpy as np
-from torch.nn.functional import threshold
 
 from scripts.stack_spectra import stack_spectra
 from scripts.stacked_ppxf_fitting import fit_spectra
-from scripts.rf_export_grouping import run_clustering
 
 def setup_directories():
     directories = [
@@ -131,9 +129,18 @@ def process_clusters():
         print(f"================================")
 
 
-def main():
+def main(binary = False):
     setup_directories()
-    run_clustering(binary=True, binary_threshold=0.4)
+
+    #from scripts.rf_export_grouping import run_clustering
+    #run_clustering(binary=False, binary_threshold=0.4, small_boundary=0.35, large_boundary=0.6)
+
+    if not binary:
+        from scripts.cluster_3_regions import run_clustering_3
+        run_clustering_3(small_boundary=0.35, large_boundary=0.6)
+    # else:
+    # import binary version and run here
+
     process_clusters()
     fit_spectra(nrand=9)
 
@@ -141,4 +148,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(binary = False)
