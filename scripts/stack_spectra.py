@@ -166,7 +166,7 @@ def save_fits(wavelength, flux, combined_ivar, cluster_name, mgfe, sigma_fin, vd
 
 
     hdul = fits.HDUList([primary_hdu, coadd_hdu])
-    output_file = f'data/stacked_fits/stacked_{cluster_name}.fits'
+    output_file = f'outputs/stacked_fits/stacked_{cluster_name}.fits'
     hdul.writeto(output_file, overwrite=True)
     print(output_file, "has been made.")
     return output_file

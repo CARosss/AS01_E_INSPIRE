@@ -391,7 +391,7 @@ def make_catalogue(file_names, method, nrand=9):
         # Store the results in a way that is suitable for Peppe's SFH plotting
 
         # name = row['sexa_id'] #This is just the ID
-        name = filename.replace('data/stacked_fits/', '').replace('.fits', '')
+        name = filename.replace('outputs/stacked_fits/', '').replace('.fits', '')
         z_orig = redshift  # This should be the original redshift of each galaxy
         # Write outputs in fits files
         hdr = fits.Header()
@@ -924,7 +924,7 @@ def fit_spectra(nrand):
             os.makedirs(directory)
 
     # Get all stacked FITS files and organize them by method
-    stacked_dir = "data/stacked_fits"
+    stacked_dir = "outputs/stacked_fits"
     fits_files = [f for f in os.listdir(stacked_dir) if f.startswith("stacked_") and f.endswith(".fits")]
 
     # Group files by clustering method

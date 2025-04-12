@@ -3,21 +3,25 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
+from scripts.cluster_3_regions import run_clustering_3_combined
 from scripts.stack_spectra import stack_spectra
 from scripts.stacked_ppxf_fitting import fit_spectra
 
 def setup_directories():
     directories = [
-        'data/stacked_fits',
+        'outputs',
+        'outputs/stacked_fits',
         'outputs/ppxf_fits',
         'outputs/sfh_plots',
-        'outputs/stacked_catalogues'
+        'outputs/stacked_catalogues',
+        'outputs/cluster_results'
     ]
 
     # Clear existing output directories
     for directory in directories:
         if directory.startswith('outputs/'):
             if os.path.exists(directory):
+                print("Deleting existing directory: {}".format(directory))
                 for file in os.listdir(directory):
                     file_path = os.path.join(directory, file)
                     try:
@@ -29,6 +33,7 @@ def setup_directories():
     # Create directories
     for directory in directories:
         os.makedirs(directory, exist_ok=True)
+        print("Created the", directory, "directory")
 
 
 def verify_cluster_order(spectra_list, catalogue_path='data/E-INSPIRE_I_master_catalogue.csv'):
@@ -68,7 +73,7 @@ def verify_cluster_order(spectra_list, catalogue_path='data/E-INSPIRE_I_master_c
 
 def get_cluster_assignments():
     """Load and organize cluster assignments from all *_clusters.csv files"""
-    cluster_dir = "data/cluster_results"
+    cluster_dir = "outputs/cluster_results"
     cluster_groups = {}
 
     # Get all cluster files
@@ -102,7 +107,7 @@ def get_cluster_assignments():
 
 def process_clusters():
 
-    df = pd.read_csv('data/cluster_results/regression_clusters.csv')
+    df = pd.read_csv('outputs/cluster_results/regression_clusters.csv')
     l = int(len(df['Cluster'].unique()))
     print(l)
 
@@ -131,15 +136,18 @@ def process_clusters():
 
 def main(binary = False):
     setup_directories()
+    print("Binary==", binary)
 
     #from scripts.rf_export_grouping import run_clustering
     #run_clustering(binary=False, binary_threshold=0.4, small_boundary=0.35, large_boundary=0.6)
 
     if not binary:
-        from scripts.cluster_3_regions import run_clustering_3
-        run_clustering_3(small_boundary=0.35, large_boundary=0.6)
-    # else:
-    # import binary version and run here
+        from scripts.cluster_3_regions import run_clustering_3_combined
+        run_clustering_3_combined(small_boundary=0.45, large_boundary=0.6)
+
+    else:
+        from scripts.cluster_2_regions import run_clustering_single_threshold
+        run_clustering_single_threshold(threshold=0.6)
 
     process_clusters()
     fit_spectra(nrand=9)
